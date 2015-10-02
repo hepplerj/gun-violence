@@ -11,6 +11,10 @@
   stroke: #fff;
 }
 
+text {
+  cursor: default;
+}
+
 </style>
 <body>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
@@ -23,7 +27,7 @@ var width = 960,
 
 projection = d3.geo.albersUsa()
     .scale(1000)
-    .translate([width / 2, 250]);
+    .translate([380, 250]);
 
 path = d3.geo.path()
     .projection(projection);
@@ -31,6 +35,13 @@ path = d3.geo.path()
 var svg = d3.select("body").append("svg")
     .attr("width", width)
     .attr("height", height);
+
+svg.append("text")
+  .style("font-size", "36px")
+  .attr("x", 480)
+  .style("text-anchor", "middle")
+  .attr("y", 30)
+  .text("Mass Shootings")
 
 d3.json("us.json", function(error, us) {
   if (error) throw error;
@@ -53,8 +64,6 @@ d3.json("us.json", function(error, us) {
 
 function motherjones(data) {
 
-  motherJonesData = data;
-
   sizeScale = d3.scale.linear().domain([0,10]).range([0,10]).clamp(true)
 
   data.forEach(function (d) {
@@ -73,12 +82,19 @@ function motherjones(data) {
     d.node.name = d["Case"];
   });
 
+  data.sort(function (a,b) {
+    return a.node.date - b.node.date;
+  })
+
+  motherJonesData = data;
+
   d3.select("svg").selectAll("g.incident")
   .data(data)
   .enter()
   .append("g")
   .attr("class", "incident")
-  .attr("transform", function (d) {return "translate(" + projection([d.node.long,d.node.lat]).join(",") + ")"});
+  .attr("transform", function (d) {return "translate(" + projection([d.node.long,d.node.lat]).join(",") + ")"})
+  .on("mouseover", incidentOver);
 
   d3.selectAll("g.incident")
   .append("circle")
@@ -95,6 +111,32 @@ function motherjones(data) {
 //  .endAngle(-2.5)
   .startAngle(3.5)
   .endAngle(-3.5)
+
+  var legendArc = d3.svg.arc()
+  .innerRadius(30)
+  .outerRadius(60)
+  .startAngle(3.5)
+  .endAngle(-3.5)
+
+  d3.select("svg").append("path")
+  .attr("transform", "translate(600,580)")
+  .attr("d", legendArc)
+  .style("fill", "white")
+  .style("stroke", "black")
+  .style("stroke-width", "2px")
+
+  d3.select("svg").append("text")
+  .attr("transform", "translate(600,580)")
+  .text("injured")
+  .attr("y", 5)
+  .style("text-anchor", "middle");
+
+  d3.select("svg").append("text")
+  .attr("transform", "translate(600,625)")
+  .text("killed")
+  .attr("y", 2)
+  .style("text-anchor", "middle");
+
 
   var noteArc = d3.svg.arc()
   .innerRadius(function (d) {return sizeScale(d.node.injured)})
@@ -133,15 +175,26 @@ function motherjones(data) {
     .data(options)
     .enter()
     .append("text")
-    .attr("x", 400)
-    .attr("y", function (d,i) {return 500 + (i * 35)})
+    .attr("x", 20)
+    .attr("y", function (d,i) {return 520 + (i * 35)})
     .text(function (d) {return d.label})
     .on("mouseover", highlight);
 
       d3.select("svg").append("g")
       .attr("class", "legendQuant")
-      .attr("transform", "translate(650,500)")
+      .attr("transform", "translate(300,510)")
       .style("opacity", 1);
+
+  d3.select("svg").selectAll("text.list")
+  .data(motherJonesData)
+  .enter()
+  .append("text")
+  .attr("class", "list")
+  .attr("x", 750)
+  .attr("y", function (d, i) {return 10 + (i * 10)})
+  .style("font-size", "8px")
+  .text(function (d) {return d.node.name})
+  .on("mouseover", incidentOver)
 
 }
 
@@ -187,7 +240,118 @@ function highlight(option) {
     d3.select("svg").select(".legendQuant")
       .call(legend);
 
+}
 
+function incidentOver(d, i) {
+  this.parentNode.appendChild(this);
+  thisPosition = motherJonesData.indexOf(d);
+
+  lastOne = "";
+  nextOne = "?";
+  neareastOne = "";
+
+  d3.selectAll(".incidentNote").remove();
+  
+  d3.selectAll("g.incident").select("path.death")
+    .style("stroke-width", "1px")
+
+  d3.selectAll("g.incident").select("path.death").filter(function (p) {return d === p})
+  .style("stroke-width", "3px");
+
+  d3.selectAll("text.list").style("font-weight", 300).style("color", "black");
+
+  d3.selectAll("text.list").filter(function (p) {return d === p})
+  .style("font-weight", "900");
+
+    d3.selectAll("g.incident").filter(function (p) {return d === p})
+    .each(function (){
+        this.parentNode.appendChild(this);
+        thisG = d3.select(this)
+        .append("g")
+        .attr("class", "incidentNote")
+        .style("pointer-events", "none");
+    })
+
+
+    thisG.append("text")
+    .style("text-anchor", "middle")
+    .text("this one")
+    .style("font-size", "24px")
+    .style("fill", "white")
+    .style("stroke", "white")
+    .style("stroke-width", "3px")
+    .attr("y", function (d) {return -(sizeScale(d.node.injured) + sizeScale(d.node.killed))})
+
+    thisG.append("text")
+    .style("text-anchor", "middle")
+    .text("this one")
+    .style("font-size", "24px")
+    .attr("y", function (d) {return -(sizeScale(d.node.injured) + sizeScale(d.node.killed))})
+
+  if (thisPosition !== 0) {
+    lastOne = motherJonesData[thisPosition - 1];
+    d3.selectAll("g.incident").filter(function (d, i) {return d === lastOne})
+    .each(function (){
+        this.parentNode.appendChild(this);
+        lastG = d3.select(this)
+        .append("g")
+        .attr("class", "incidentNote")
+        .style("pointer-events", "none");
+    })
+
+  d3.selectAll("text.list").filter(function (p) {return d === lastOne})
+  .style("font-weight", "900")
+  .style("color", "gray");
+
+    lastG.append("text")
+    .style("text-anchor", "middle")
+    .text("last one")
+    .style("font-size", "24px")
+    .style("fill", "white")
+    .style("stroke", "white")
+    .style("stroke-width", "3px")
+    .attr("y", function (d) {return -(sizeScale(d.node.injured) + sizeScale(d.node.killed))})
+
+    lastG.append("text")
+    .style("text-anchor", "middle")
+    .text("last one")
+    .style("font-size", "24px")
+    .attr("y", function (d) {return -(sizeScale(d.node.injured) + sizeScale(d.node.killed))})
+
+  }
+
+  if (thisPosition !== motherJonesData.length - 1) {
+    nextOne = motherJonesData[thisPosition + 1];
+
+    d3.selectAll("g.incident").filter(function (d, i) {return d === nextOne})
+    .each(function (){
+        this.parentNode.appendChild(this);
+        nextG = d3.select(this)
+        .append("g")
+        .attr("class", "incidentNote")
+        .style("pointer-events", "none");
+    })
+
+  d3.selectAll("text.list").filter(function (p) {return d === nextOne})
+  .style("font-weight", "900")
+  .style("color", "darkgray");
+
+    nextG.append("text")
+    .style("text-anchor", "middle")
+    .text("next one")
+    .style("font-size", "24px")
+    .style("fill", "white")
+    .style("stroke", "white")
+    .style("stroke-width", "3px")
+    .attr("y", function (d) {return -(sizeScale(d.node.injured) + sizeScale(d.node.killed))})
+
+    nextG.append("text")
+    .style("text-anchor", "middle")
+    .text("next one")
+    .style("font-size", "24px")
+    .attr("y", function (d) {return -(sizeScale(d.node.injured) + sizeScale(d.node.killed))})
+
+  }
 
 }
 
