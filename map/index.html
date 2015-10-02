@@ -82,40 +82,36 @@ function motherjones(data) {
 
   d3.selectAll("g.incident")
   .append("circle")
+  .attr("class", "injured")
   .attr("r", function(d) {return sizeScale(d.node.injured)})
-  .style("fill", "blue")
+  .style("fill", "#ff3333")
   .style("stroke", "none")
-  .style("fill-opacity", .5)
-
-  d3.selectAll("g.incident")
-  .append("circle")
-  .attr("class", "ring")
-  .attr("r", function(d) {return 5 + (sizeScale(d.node.killed)/2) + sizeScale(d.node.injured)})
-  .style("fill", "none")
-  .style("stroke", "2px")
-  .style("stroke-opacity", 0)
+  .style("fill-opacity", .75)
 
   var arc = d3.svg.arc()
   .innerRadius(function (d) {return sizeScale(d.node.injured)})
   .outerRadius(function (d) {return sizeScale(d.node.injured) + sizeScale(d.node.killed)})
-  .startAngle(2.5)
-  .endAngle(-2.5)
+//  .startAngle(2.5)
+//  .endAngle(-2.5)
+  .startAngle(3.5)
+  .endAngle(-3.5)
 
   var noteArc = d3.svg.arc()
   .innerRadius(function (d) {return sizeScale(d.node.injured)})
-  .outerRadius(function (d) {return sizeScale(d.node.injured) + sizeScale(d.node.killed)})
+  .outerRadius(function (d) {return Math.max(1, sizeScale(d.node.injured) + sizeScale(d.node.killed) + 0)})
   .startAngle(2.5)
   .endAngle(3.8)
 
   d3.selectAll("g.incident")
   .append("path")
+  .attr("class", "death")
   .attr("d", function (d) {return arc(d)})
-  .style("fill", "red")
-  .style("fill-opacity", .5)
+  .style("fill", "#b30000")
+  .style("fill-opacity", .75)
   .style("stroke", "black")
   .style("stroke-width", "1px")
 
-  d3.selectAll("g.incident")
+/*  d3.selectAll("g.incident")
   .append("path")
   .attr("class", "note")
   .attr("d", function (d) {return noteArc(d)})
@@ -123,6 +119,8 @@ function motherjones(data) {
   .style("fill-opacity", 0)
   .style("stroke", "black")
   .style("stroke-width", "1px")
+  */
+
   options = ["venue", "gender", "race", "legal", "mentalIllness"]
 
   options = [{label: "Where do these things happen?", name: "venue"},
@@ -147,7 +145,16 @@ function motherjones(data) {
 
 }
 
+//last one next one nearest one
+
 function highlight(option) {
+
+  d3.selectAll("text")
+  .style("font-weight", 300)
+
+  d3.select(this)
+  .style("font-weight", 900);
+
   var thisoption = motherJonesData.map(function (d) {return d.node[option.name]});
   var uniques = d3.set(thisoption).values()
   var colors = d3.scale.category10().domain(uniques);
@@ -157,6 +164,19 @@ function highlight(option) {
     .duration(1000)
     .style("fill-opacity", 1)
     .style("fill", function (d) {return colors(d.node[option.name])});
+
+  d3.selectAll("path.death")
+    .transition()
+    .duration(1000)
+    .style("fill-opacity", 1)
+    .style("fill", function (d) {return colors(d.node[option.name])});
+
+  d3.selectAll("circle.injured")
+    .transition()
+    .duration(1000)
+    .style("fill-opacity", 1)
+    .style("fill", function (d) {return colors(d.node[option.name])});
+
 
     var legend = d3.legend.color()
       .labelFormat(function (d) {return d})
