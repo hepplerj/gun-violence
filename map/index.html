@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.state {
+  fill: #ccc;
+}
+
+.state-boundary {
+  fill: none;
+  stroke: #fff;
+}
+
+</style>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.19/topojson.min.js"></script>
+<script src="d3.svg.legend.js"></script>
+<script>
+
+var width = 960,
+    height = 960;
+
+projection = d3.geo.albersUsa()
+    .scale(1000)
+    .translate([width / 2, 250]);
+
+path = d3.geo.path()
+    .projection(projection);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+d3.json("us.json", function(error, us) {
+  if (error) throw error;
+
+  var states = topojson.feature(us, us.objects.states);
+
+  svg.append("path")
+      .datum(states)
+      .attr("class", "state")
+      .attr("d", path);
+
+  svg.append("path")
+      .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
+      .attr("class", "state-boundary")
+      .attr("d", path);
+
+  d3.csv("../data/motherjones.csv", motherjones);
+  d3.json("../data/heppler.json", heppler);
+});
+
+function motherjones(data) {
+
+  motherJonesData = data;
+
+  sizeScale = d3.scale.linear().domain([0,10]).range([0,10]).clamp(true)
+
+  data.forEach(function (d) {
+    d.node = {};
+    d.node.lat = parseFloat(d.latitude);
+    d.node.long = parseFloat(d.longitude);
+    d.node.venue = d.Venue;
+    d.node.killed = parseInt(d.Fatalities);
+    d.node.injured = parseInt(d.Injured);
+    d.node.gender = d.Gender;
+    d.node.race = d.Race;
+    d.node.weapons = d["Type of weapons"].split(";");
+    d.node.legal = d["Weapons obtained legally"];
+    d.node.mentalIllness = d["Prior signs of possible mental illness"];
+    d.node.date = new Date(d["Date"]);
+    d.node.name = d["Case"];
+  });
+
+  d3.select("svg").selectAll("g.incident")
+  .data(data)
+  .enter()
+  .append("g")
+  .attr("class", "incident")
+  .attr("transform", function (d) {return "translate(" + projection([d.node.long,d.node.lat]).join(",") + ")"});
+
+  d3.selectAll("g.incident")
+  .append("circle")
+  .attr("r", function(d) {return sizeScale(d.node.injured)})
+  .style("fill", "none")
+  .style("stroke", "red")
+  .style("stroke-width", function (d) {return sizeScale(d.node.killed)})
+  .style("stroke-opacity", .5)
+
+
+  d3.selectAll("g.incident")
+  .append("circle")
+  .attr("r", function(d) {return  sizeScale(d.node.injured)})
+  .style("fill", "blue")
+  .style("stroke", "none")
+  .style("fill-opacity", .5)
+
+  d3.selectAll("g.incident")
+  .append("circle")
+  .attr("class", "ring")
+  .attr("r", function(d) {return 5 + (sizeScale(d.node.killed)/2) + sizeScale(d.node.injured)})
+  .style("fill", "none")
+  .style("stroke", "2px")
+  .style("stroke-opacity", 0)
+
+  options = ["venue", "gender", "race", "legal", "mentalIllness"]
+
+  d3.select("svg").selectAll("text.options")
+    .data(options)
+    .enter()
+    .append("text")
+    .attr("x", 30)
+    .attr("y", function (d,i) {return 100 + (i * 35)})
+    .text(function (d) {return d})
+    .on("mouseover", highlight);
+
+      d3.select("svg").append("g")
+      .attr("class", "legendQuant")
+      .attr("transform", "translate(100,450)")
+      .style("opacity", 1);
+
+}
+
+function highlight(option) {
+  var thisoption = motherJonesData.map(function (d) {return d.node[option]});
+  var uniques = d3.set(thisoption).values()
+  var colors = d3.scale.category20().domain(uniques);
+
+  d3.selectAll("circle.ring")
+    .transition()
+    .duration(1000)
+    .style("stroke-opacity", 1)
+    .style("stroke", function (d) {return colors(d.node[option])});
+
+    var legend = d3.legend.color()
+      .labelFormat(function (d) {return d})
+      .shapeWidth(20)
+      .shapeHeight(20)
+      .scale(colors);
+
+    d3.select("svg").select(".legendQuant")
+      .call(legend);
+
+
+
+}
+
+function heppler(data) {
+  console.log(data);
+}
+
+</script>
