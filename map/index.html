@@ -83,15 +83,6 @@ function motherjones(data) {
   d3.selectAll("g.incident")
   .append("circle")
   .attr("r", function(d) {return sizeScale(d.node.injured)})
-  .style("fill", "none")
-  .style("stroke", "red")
-  .style("stroke-width", function (d) {return sizeScale(d.node.killed)})
-  .style("stroke-opacity", .5)
-
-
-  d3.selectAll("g.incident")
-  .append("circle")
-  .attr("r", function(d) {return  sizeScale(d.node.injured)})
   .style("fill", "blue")
   .style("stroke", "none")
   .style("fill-opacity", .5)
@@ -104,34 +95,68 @@ function motherjones(data) {
   .style("stroke", "2px")
   .style("stroke-opacity", 0)
 
+  var arc = d3.svg.arc()
+  .innerRadius(function (d) {return sizeScale(d.node.injured)})
+  .outerRadius(function (d) {return sizeScale(d.node.injured) + sizeScale(d.node.killed)})
+  .startAngle(2.5)
+  .endAngle(-2.5)
+
+  var noteArc = d3.svg.arc()
+  .innerRadius(function (d) {return sizeScale(d.node.injured)})
+  .outerRadius(function (d) {return sizeScale(d.node.injured) + sizeScale(d.node.killed)})
+  .startAngle(2.5)
+  .endAngle(3.8)
+
+  d3.selectAll("g.incident")
+  .append("path")
+  .attr("d", function (d) {return arc(d)})
+  .style("fill", "red")
+  .style("fill-opacity", .5)
+  .style("stroke", "black")
+  .style("stroke-width", "1px")
+
+  d3.selectAll("g.incident")
+  .append("path")
+  .attr("class", "note")
+  .attr("d", function (d) {return noteArc(d)})
+  .style("fill", "red")
+  .style("fill-opacity", 0)
+  .style("stroke", "black")
+  .style("stroke-width", "1px")
   options = ["venue", "gender", "race", "legal", "mentalIllness"]
+
+  options = [{label: "Where do these things happen?", name: "venue"},
+  {label: "Is it always men?", name: "gender"},
+  {label: "Is the shooter always white?", name: "race"},
+  {label: "Did they get the guns legally?", name: "legal"},
+  {label: "Were they crazy?", name: "mentalIllness"}]
 
   d3.select("svg").selectAll("text.options")
     .data(options)
     .enter()
     .append("text")
-    .attr("x", 30)
-    .attr("y", function (d,i) {return 100 + (i * 35)})
-    .text(function (d) {return d})
+    .attr("x", 400)
+    .attr("y", function (d,i) {return 500 + (i * 35)})
+    .text(function (d) {return d.label})
     .on("mouseover", highlight);
 
       d3.select("svg").append("g")
       .attr("class", "legendQuant")
-      .attr("transform", "translate(100,450)")
+      .attr("transform", "translate(650,500)")
       .style("opacity", 1);
 
 }
 
 function highlight(option) {
-  var thisoption = motherJonesData.map(function (d) {return d.node[option]});
+  var thisoption = motherJonesData.map(function (d) {return d.node[option.name]});
   var uniques = d3.set(thisoption).values()
-  var colors = d3.scale.category20().domain(uniques);
+  var colors = d3.scale.category10().domain(uniques);
 
-  d3.selectAll("circle.ring")
+  d3.selectAll("path.note")
     .transition()
     .duration(1000)
-    .style("stroke-opacity", 1)
-    .style("stroke", function (d) {return colors(d.node[option])});
+    .style("fill-opacity", 1)
+    .style("fill", function (d) {return colors(d.node[option.name])});
 
     var legend = d3.legend.color()
       .labelFormat(function (d) {return d})
